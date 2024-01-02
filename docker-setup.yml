@@ -1,0 +1,73 @@
+# docker_setup.yml
+---
+- name: Install Docker on Debian
+  hosts: all
+  become: true
+  tasks:
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_lsb.codename }} stable"
+        state: present
+
+    - name: Update apt package cache (again)
+      apt:
+        update_cache: yes
+
+    - name: Ensure Docker is installed
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Ensure Docker-Compose is installed
+      apt:
+        name: docker-compose
+        state: present
+        
+    - name: Add user 'vagrant' to the 'docker' group
+      user:
+        name: vagrant
+        groups: docker
+        append: yes
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      
+
+    - name: Pull Splunk Docker image
+      docker_image:
+        name: splunk/splunk:latest
+        source: pull
+    - name: Run Splunk Container
+      docker_container:
+        name: splunk_container
+        image: splunk/splunk:latest
+        detach: yes
+        restart_policy: unless-stopped
+        published_ports:
+          - "8000:8000" 
+        env:
+          SPLUNK_START_ARGS: "--accept-license"
+          SPLUNK_PASSWORD: "Splunk@2024"      
